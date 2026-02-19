@@ -281,6 +281,7 @@ const App: React.FC = () => {
                   </div>
                   <span className="text-[11px] font-black uppercase tracking-[0.4em] text-blue-400">Покарання згенеровано</span>
                 </div>
+                {/* ПРАВКА ТЕКСТУ: Прибрано truncate, додано перенесення */}
                 <h4 className="text-white font-black text-xl md:text-3xl tracking-tighter leading-tight whitespace-normal break-words">
                   {calculatedPunishment.text}
                 </h4>

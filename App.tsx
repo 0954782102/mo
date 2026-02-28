@@ -1,10 +1,9 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, Shield, Sword, FileText, Menu, X, Radio, Building2, Copy, Check, Trash2, RefreshCw, Sparkles, Layout, MessageSquare, Users } from 'lucide-react';
+import { Search, Shield, Sword, FileText, Menu, X, Radio, Building2, Copy, Check, Trash2, RefreshCw, Sparkles, Layout, MessageSquare, Users, Lightbulb, Send } from 'lucide-react';
 import { Category, Rule } from './types';
 import { RULES_DATA } from './constants';
 
-// Оптимізований RuleItem для уникнення лагів при скролі та виборі
 const RuleItem = React.memo(({ 
   rule, 
   category, 
@@ -30,7 +29,7 @@ const RuleItem = React.memo(({
     <div 
       onClick={() => onToggle(rule)}
       className={`
-        glass-card cursor-pointer p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.8rem] transition-all relative
+        glass-card cursor-pointer p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.8rem] transition-all relative will-change-transform
         ${isSelected ? 'btn-active border-blue-500/40' : 'border-white/5'}
       `}
     >
@@ -85,6 +84,8 @@ const App: React.FC = () => {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  const [suggestionText, setSuggestionText] = useState('');
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -133,6 +134,7 @@ const App: React.FC = () => {
       case Category.CHAT: return 'ППЧ';
       case Category.GOVERNMENT: return 'ППГ';
       case Category.ROLEPLAY: return 'ПП';
+      case Category.SUGGESTIONS: return 'ПРОПОЗИЦІЯ';
       default: return 'ПП';
     }
   };
@@ -146,7 +148,6 @@ const App: React.FC = () => {
     selectedRules.forEach(rule => {
       ruleIds.push(rule.id);
       
-      // Спробуємо витягнути абревіатуру правила (наприклад, DM, MG, RK)
       const nameMatch = rule.text.match(/^([A-ZА-Я]{2,10})/);
       if (nameMatch) {
         ruleNames.push(nameMatch[1]);
@@ -192,7 +193,6 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="font-black text-xl md:text-2xl tracking-tight text-white">UA ХАБ</h1>
-              <p className="text-[8px] text-blue-400 font-bold uppercase tracking-widest opacity-80">Оптимізовано</p>
             </div>
             <button className="md:hidden ml-auto text-white" onClick={() => setIsSidebarOpen(false)}>
               <X size={24} />
@@ -202,17 +202,18 @@ const App: React.FC = () => {
           <nav className="flex-1 space-y-2 overflow-y-auto pr-1">
             <p className="px-3 text-[9px] font-black text-slate-500 uppercase tracking-widest mb-4">Категорії</p>
             {[
-              { id: Category.CHAT, icon: MessageSquare, label: 'Правила чату', color: 'amber' },
-              { id: Category.ROLEPLAY, icon: Users, label: 'Role Play', color: 'blue' },
-              { id: Category.MILITARY, icon: Sword, label: 'Напад на ВЧ', color: 'rose' },
-              { id: Category.GOVERNMENT, icon: Radio, label: 'Держ. хвиля', color: 'purple' },
+              { id: Category.CHAT, icon: MessageSquare, label: 'Правила чату', activeClass: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
+              { id: Category.ROLEPLAY, icon: Users, label: 'Role Play', activeClass: 'text-blue-400 bg-blue-500/10 border-blue-500/30' },
+              { id: Category.MILITARY, icon: Sword, label: 'Напад на ВЧ', activeClass: 'text-rose-400 bg-rose-500/10 border-rose-500/30' },
+              { id: Category.GOVERNMENT, icon: Radio, label: 'Держ. хвиля', activeClass: 'text-purple-400 bg-purple-500/10 border-purple-500/30' },
+              { id: Category.SUGGESTIONS, icon: Lightbulb, label: 'Пропозиції', activeClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
             ].map((item) => (
               <button
                 key={item.id}
                 onClick={() => toggleCategory(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl transition-all border ${
                   activeCategory === item.id 
-                  ? `text-${item.color}-400 bg-${item.color}-500/10 border-${item.color}-500/30`
+                  ? item.activeClass
                   : 'text-slate-400 border-transparent hover:bg-white/5'
                 }`}
               >
@@ -248,6 +249,7 @@ const App: React.FC = () => {
               <h2 className="text-4xl md:text-7xl font-black tracking-tighter text-white leading-tight">
                 {activeCategory === Category.MILITARY ? 'Контроль ВЧ' : 
                  activeCategory === Category.CHAT ? 'Чат та Голос' :
+                 activeCategory === Category.SUGGESTIONS ? 'Пропозиції' :
                  activeCategory === Category.ROLEPLAY ? 'Role Play' : 'Рація'}
               </h2>
             </div>
@@ -264,23 +266,62 @@ const App: React.FC = () => {
           </div>
 
           {/* Пошук */}
-          <div className="sticky top-0 z-30 py-2">
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                <Search size={20} className="text-slate-500" />
+          {activeCategory !== Category.SUGGESTIONS && (
+            <div className="sticky top-0 z-30 py-2">
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+                  <Search size={20} className="text-slate-500" />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Пошук правил..."
+                  className="w-full bg-slate-900/60 backdrop-blur-xl border border-white/10 text-white pl-14 pr-6 py-4 md:py-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all font-semibold shadow-xl"
+                />
               </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Пошук правил..."
-                className="w-full bg-slate-900/60 backdrop-blur-xl border border-white/10 text-white pl-14 pr-6 py-4 md:py-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all font-semibold shadow-xl"
-              />
             </div>
-          </div>
+          )}
 
           <div className="space-y-12">
-            {filteredRules.length > 0 ? (
+            {activeCategory === Category.SUGGESTIONS ? (
+              <div className="glass-card p-8 md:p-12 rounded-[2.5rem] space-y-8 animate-reveal will-change-transform">
+                <div className="space-y-4">
+                  <h3 className="text-2xl md:text-3xl font-black text-white">Маєте ідею чи знайшли баг?</h3>
+                  <p className="text-slate-400 font-medium">Ваш відгук допомагає нам ставати кращими. Опишіть вашу пропозицію або недопрацювання нижче.</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Ваша пропозиція / недопрацювання</label>
+                    <textarea 
+                      value={suggestionText}
+                      onChange={(e) => setSuggestionText(e.target.value)}
+                      placeholder="Опишіть детально..."
+                      rows={6}
+                      className="w-full bg-slate-950/40 border border-white/5 text-white px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-bold resize-none"
+                    />
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      if (!suggestionText) {
+                        alert('Будь ласка, заповніть поле');
+                        return;
+                      }
+                      const time = new Date().toLocaleString('uk-UA');
+                      const message = `Время ${time}, пропозиція: ${suggestionText}`;
+                      const encodedMessage = encodeURIComponent(message);
+                      window.open(`https://t.me/bortovt?text=${encodedMessage}`, '_blank');
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white h-16 rounded-2xl flex items-center justify-center gap-3 transition-all font-black text-lg shadow-lg shadow-emerald-900/20"
+                  >
+                    <Send size={20} />
+                    ВІДПРАВИТИ В TELEGRAM
+                  </button>
+                </div>
+              </div>
+            ) : filteredRules.length > 0 ? (
               filteredRules.map((section, idx) => (
                 <section key={idx} className="space-y-6 animate-reveal">
                   <div className="flex items-center gap-4">

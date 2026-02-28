@@ -132,7 +132,7 @@ const App: React.FC = () => {
       case Category.MILITARY: return 'ППВЧ';
       case Category.CHAT: return 'ППЧ';
       case Category.GOVERNMENT: return 'ППГ';
-      case Category.ROLEPLAY: return 'ППРП';
+      case Category.ROLEPLAY: return 'ПП';
       default: return 'ПП';
     }
   };
@@ -140,10 +140,18 @@ const App: React.FC = () => {
   const calculatedPunishment = useMemo(() => {
     let totalTime = 0;
     const ruleIds: string[] = [];
+    const ruleNames: string[] = [];
     let punishmentType = 'хвилин';
 
     selectedRules.forEach(rule => {
       ruleIds.push(rule.id);
+      
+      // Спробуємо витягнути абревіатуру правила (наприклад, DM, MG, RK)
+      const nameMatch = rule.text.match(/^([A-ZА-Я]{2,10})/);
+      if (nameMatch) {
+        ruleNames.push(nameMatch[1]);
+      }
+
       if (rule.punishment) {
         const matches = rule.punishment.match(/\d+/g);
         if (matches) {
@@ -154,7 +162,10 @@ const App: React.FC = () => {
       }
     });
 
-    const reason = getReasonCode(activeCategory);
+    const uniqueNames = Array.from(new Set(ruleNames));
+    const reasonCode = getReasonCode(activeCategory);
+    const reason = uniqueNames.length > 0 ? uniqueNames.join(', ') : reasonCode;
+    
     return `${totalTime} ${punishmentType}, причина: ${reason} (п. ${ruleIds.join(', ')})`;
   }, [selectedRules, activeCategory]);
 

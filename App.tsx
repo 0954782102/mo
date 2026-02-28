@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, Shield, Sword, FileText, Menu, X, Radio, Building2, Copy, Check, Trash2, RefreshCw, Sparkles, Layout } from 'lucide-react';
+import { Search, Shield, Sword, FileText, Menu, X, Radio, Building2, Copy, Check, Trash2, RefreshCw, Sparkles, Layout, MessageSquare, Users } from 'lucide-react';
 import { Category, Rule } from './types';
 import { RULES_DATA } from './constants';
 
@@ -19,9 +19,9 @@ const RuleItem = React.memo(({
   const getAccentColor = () => {
     switch (category) {
       case Category.MILITARY: return isSelected ? 'bg-rose-500 text-white' : 'bg-rose-500/20 text-rose-400';
-      case Category.LEADERS: return isSelected ? 'bg-blue-500 text-white' : 'bg-blue-500/20 text-blue-400';
+      case Category.CHAT: return isSelected ? 'bg-amber-500 text-white' : 'bg-amber-500/20 text-amber-400';
       case Category.GOVERNMENT: return isSelected ? 'bg-purple-500 text-white' : 'bg-purple-500/20 text-purple-400';
-      case Category.STATE_ORG: return isSelected ? 'bg-cyan-500 text-white' : 'bg-cyan-500/20 text-cyan-400';
+      case Category.ROLEPLAY: return isSelected ? 'bg-blue-500 text-white' : 'bg-blue-500/20 text-blue-400';
       default: return 'bg-slate-800 text-slate-400';
     }
   };
@@ -78,7 +78,7 @@ const RuleItem = React.memo(({
 });
 
 const App: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState<Category>(Category.MILITARY);
+  const [activeCategory, setActiveCategory] = useState<Category>(Category.CHAT);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedRules, setSelectedRules] = useState<Rule[]>([]);
@@ -130,9 +130,9 @@ const App: React.FC = () => {
   const getReasonCode = (cat: Category) => {
     switch (cat) {
       case Category.MILITARY: return 'ППВЧ';
-      case Category.LEADERS: return 'ППЛ';
+      case Category.CHAT: return 'ППЧ';
       case Category.GOVERNMENT: return 'ППГ';
-      case Category.STATE_ORG: return 'ППГО';
+      case Category.ROLEPLAY: return 'ППРП';
       default: return 'ПП';
     }
   };
@@ -191,9 +191,9 @@ const App: React.FC = () => {
           <nav className="flex-1 space-y-2 overflow-y-auto pr-1">
             <p className="px-3 text-[9px] font-black text-slate-500 uppercase tracking-widest mb-4">Категорії</p>
             {[
+              { id: Category.CHAT, icon: MessageSquare, label: 'Правила чату', color: 'amber' },
+              { id: Category.ROLEPLAY, icon: Users, label: 'Role Play', color: 'blue' },
               { id: Category.MILITARY, icon: Sword, label: 'Напад на ВЧ', color: 'rose' },
-              { id: Category.STATE_ORG, icon: Building2, label: 'Держ. орг.', color: 'cyan' },
-              { id: Category.LEADERS, icon: FileText, label: 'Лідери / Заст.', color: 'blue' },
               { id: Category.GOVERNMENT, icon: Radio, label: 'Держ. хвиля', color: 'purple' },
             ].map((item) => (
               <button
@@ -236,8 +236,8 @@ const App: React.FC = () => {
               </div>
               <h2 className="text-4xl md:text-7xl font-black tracking-tighter text-white leading-tight">
                 {activeCategory === Category.MILITARY ? 'Контроль ВЧ' : 
-                 activeCategory === Category.STATE_ORG ? 'Регламент' :
-                 activeCategory === Category.LEADERS ? 'Лідери' : 'Рація'}
+                 activeCategory === Category.CHAT ? 'Чат та Голос' :
+                 activeCategory === Category.ROLEPLAY ? 'Role Play' : 'Рація'}
               </h2>
             </div>
 

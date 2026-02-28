@@ -12,15 +12,15 @@ export interface RuleSection {
 }
 
 export enum Category {
-  LEADERS = 'LEADERS',
+  CHAT = 'CHAT',
   MILITARY = 'MILITARY',
   GOVERNMENT = 'GOVERNMENT',
-  STATE_ORG = 'STATE_ORG'
+  ROLEPLAY = 'ROLEPLAY'
 }
 
 export interface RulesData {
-  [Category.LEADERS]: RuleSection[];
+  [Category.CHAT]: RuleSection[];
   [Category.MILITARY]: RuleSection[];
   [Category.GOVERNMENT]: RuleSection[];
-  [Category.STATE_ORG]: RuleSection[];
+  [Category.ROLEPLAY]: RuleSection[];
 }

@@ -250,32 +250,38 @@ const App: React.FC = () => {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (authMode === 'register' && authForm.password !== authForm.confirmPassword) {
-      alert('Паролі не співпадають');
-      return;
-    }
-
-    const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(authForm)
-    });
-
-    const data = await res.json();
-    if (res.ok) {
-      if (authMode === 'login') {
-        localStorage.setItem('token', data.token);
-        setToken(data.token);
-        setUser(data.user);
-        setAuthMode(null);
-        socket?.emit('log_activity', { userId: data.user.id, nickname: data.user.nickname, action: 'Увійшов в акаунт' });
-      } else {
-        setAuthMode('login');
-        alert('Реєстрація успішна! Тепер увійдіть.');
+    console.log('handleAuth called', { authMode, authForm });
+    try {
+      if (authMode === 'register' && authForm.password !== authForm.confirmPassword) {
+        alert('Паролі не співпадають');
+        return;
       }
-    } else {
-      alert(data.error || 'Помилка');
+
+      const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authForm)
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        if (authMode === 'login') {
+          localStorage.setItem('token', data.token);
+          setToken(data.token);
+          setUser(data.user);
+          setAuthMode(null);
+          socket?.emit('log_activity', { userId: data.user.id, nickname: data.user.nickname, action: 'Увійшов в акаунт' });
+        } else {
+          setAuthMode('login');
+          alert('Реєстрація успішна! Тепер увійдіть.');
+        }
+      } else {
+        alert(data.error || 'Помилка');
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      alert('Сталася помилка при спробі авторизації. Перевірте з\'єднання з сервером.');
     }
   };
 

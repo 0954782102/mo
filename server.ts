@@ -15,6 +15,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'ua-online-secret-key-2026';
 const SYSADMIN_EMAIL = 'a60840397@gmail.com';
 
 async function startServer() {
+  console.log('Starting server initialization...');
   const app = express();
   const httpServer = createServer(app);
   const io = new Server(httpServer, {
@@ -98,6 +99,7 @@ async function startServer() {
   // Auth Routes
   app.post('/api/auth/register', async (req, res) => {
     const { nickname, email, password } = req.body;
+    console.log('Register attempt:', { nickname, email });
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
       const role = email === SYSADMIN_EMAIL ? 'SysAdmin' : 'User';
@@ -108,21 +110,26 @@ async function startServer() {
         [nickname, email, hashedPassword, role, position]
       );
       
+      console.log('User registered:', email);
       res.status(201).json({ message: 'User registered' });
     } catch (error) {
+      console.error('Register error:', error);
       res.status(400).json({ error: 'Email already exists' });
     }
   });
 
   app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
+    console.log('Login attempt:', email);
     const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
     
     if (user && await bcrypt.compare(password, user.password)) {
       const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET);
       const { password: _, ...userWithoutPassword } = user;
+      console.log('User logged in:', email);
       res.json({ token, user: userWithoutPassword });
     } else {
+      console.log('Login failed for:', email);
       res.status(401).json({ error: 'Invalid credentials' });
     }
   });

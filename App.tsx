@@ -209,6 +209,12 @@ const App: React.FC = () => {
     if (token) fetchMe();
   }, [token]);
 
+  useEffect(() => {
+    if (window.location.hostname.includes('netlify.app')) {
+      alert('УВАГА: Цей сайт хоститься на Netlify, який не підтримує серверний функціонал (Node.js). База даних та авторизація НЕ будуть працювати. Будь ласка, використовуйте офіційне посилання або розгорніть на Render/Railway.');
+    }
+  }, []);
+
   const fetchRules = async () => {
     setIsLoadingRules(true);
     try {
@@ -240,6 +246,59 @@ const App: React.FC = () => {
     } catch (e) {
       handleLogout();
     }
+  };
+
+  const handleEditRule = (rule: Rule) => {
+    const text = prompt('Редагувати текст правила:', rule.text);
+    if (text === null) return;
+    const punishment = prompt('Редагувати покарання:', rule.punishment || '');
+    const note = prompt('Редагувати примітку:', rule.note || '');
+    const sectionTitle = prompt('Редагувати назву розділу:', rule.sectionTitle || '');
+    
+    // Ensure category is present (especially for initial rules)
+    const category = rule.category || activeCategory;
+
+    fetch('/api/rules', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ 
+        ...rule, 
+        text, 
+        punishment, 
+        note, 
+        category,
+        sectionTitle: sectionTitle || "Загальні правила" 
+      })
+    }).then(res => {
+      if (res.ok) {
+        setToast('Правило оновлено');
+        fetchRules();
+        setTimeout(() => setToast(null), 3000);
+      } else {
+        alert('Помилка при оновленні правила. Перевірте консоль.');
+      }
+    }).catch(err => {
+      console.error('Edit rule error:', err);
+      alert('Помилка з\'єднання з сервером');
+    });
+  };
+
+  const handleDeleteRule = (id: string) => {
+    if (!confirm('Ви впевнені, що хочете видалити це правило?')) return;
+    
+    fetch(`/api/rules/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then(res => {
+      if (res.ok) {
+        setToast('Правило видалено');
+        fetchRules();
+        setTimeout(() => setToast(null), 3000);
+      }
+    });
   };
 
   const handleLogout = () => {
@@ -301,7 +360,7 @@ const App: React.FC = () => {
     const currentRules = rules.length > 0 ? rules.filter(r => r.category === activeCategory) : [];
     
     // Fallback to INITIAL_RULES if DB is empty for this category
-    const displayRules = currentRules.length > 0 ? currentRules : (INITIAL_RULES[activeCategory]?.flatMap(s => s.rules.map(r => ({ ...r, sectionTitle: s.title }))) || []);
+    const displayRules = currentRules.length > 0 ? currentRules : (INITIAL_RULES[activeCategory]?.flatMap(s => s.rules.map(r => ({ ...r, category: activeCategory, sectionTitle: s.title }))) || []);
 
     const filtered = searchQuery 
       ? displayRules.filter(r => r.id.includes(searchQuery) || r.text.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -310,7 +369,7 @@ const App: React.FC = () => {
     // Re-group into sections
     const sections: { title: string, rules: Rule[] }[] = [];
     filtered.forEach(r => {
-      const sectionTitle = (r as any).sectionTitle || "Загальні правила";
+      const sectionTitle = r.sectionTitle || "Загальні правила";
       let section = sections.find(s => s.title === sectionTitle);
       if (!section) {
         section = { title: sectionTitle, rules: [] };
@@ -614,6 +673,8 @@ const App: React.FC = () => {
                         isSelected={!!selectedRules.find(r => r.id === rule.id)}
                         onToggle={handleToggleRule}
                         isAdmin={user?.email === SYSADMIN_EMAIL}
+                        onEdit={handleEditRule}
+                        onDelete={handleDeleteRule}
                       />
                     ))}
                   </div>
@@ -784,75 +845,126 @@ const App: React.FC = () => {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <h4 className="text-2xl font-black text-white">Управління контентом</h4>
-                      <button 
-                        onClick={() => {
-                          const id = prompt('Введіть ID правила (напр. 5.1):');
-                          if (!id) return;
-                          const text = prompt('Введіть текст правила:');
-                          if (!text) return;
-                          const punishment = prompt('Введіть покарання (напр. Мут 20 хв):');
-                          const sectionTitle = prompt('Введіть назву розділу:');
-                          
-                          fetch('/api/rules', {
-                            method: 'POST',
-                            headers: { 
-                              'Content-Type': 'application/json',
-                              'Authorization': `Bearer ${token}`
-                            },
-                            body: JSON.stringify({ id, text, punishment, category: activeCategory, sectionTitle: sectionTitle || 'Загальні' })
-                          }).then(() => fetchRules());
-                        }}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-sm flex items-center gap-2"
-                      >
-                        <Plus size={18} />
-                        ДОДАТИ ПРАВИЛО
-                      </button>
+                      <div className="flex gap-3">
+                        <button 
+                          onClick={fetchRules}
+                          className="p-3 bg-white/5 text-slate-400 rounded-xl hover:text-white transition-all border border-white/10"
+                          title="Оновити список з бази"
+                        >
+                          <RefreshCw size={18} className={isLoadingRules ? 'animate-spin' : ''} />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const text = prompt('Введіть текст новини для чейнджлогу:');
+                            if (text) {
+                              fetch('/api/changelog', {
+                                method: 'POST',
+                                headers: { 
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${token}`
+                                },
+                                body: JSON.stringify({ text })
+                              }).then(() => {
+                                setToast('Чейнджлог оновлено');
+                                setTimeout(() => setToast(null), 3000);
+                              });
+                            }
+                          }}
+                          className="px-6 py-3 bg-white/5 text-white border border-white/10 rounded-xl font-black text-sm flex items-center gap-2 hover:bg-white/10 transition-all"
+                        >
+                          <Sparkles size={18} />
+                          ДОДАТИ ЧЕЙНДЖЛОГ
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const id = prompt('Введіть ID правила (наприклад: 5.1):');
+                            if (!id) return;
+                            const text = prompt('Введіть текст правила:');
+                            if (!text) return;
+                            const punishment = prompt('Введіть покарання (наприклад: Мут 20 хв):');
+                            const note = prompt('Введіть примітку (необов\'язково):');
+                            const category = prompt('Введіть категорію (CHAT, MILITARY, ROLEPLAY, GOVERNMENT):', activeCategory);
+                            if (!category) return;
+                            const sectionTitle = prompt('Введіть назву розділу (наприклад: Правила ігрового чату):');
+                            if (!sectionTitle) return;
+                            
+                            fetch('/api/rules', {
+                              method: 'POST',
+                              headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                              },
+                              body: JSON.stringify({ id, text, punishment, note, category, sectionTitle })
+                            }).then(res => {
+                              if (res.ok) {
+                                setToast('Правило додано');
+                                fetchRules();
+                                setTimeout(() => setToast(null), 3000);
+                              }
+                            });
+                          }}
+                          className="px-6 py-3 bg-blue-600 text-white rounded-xl font-black text-sm flex items-center gap-2 hover:bg-blue-500 transition-all shadow-lg shadow-blue-900/20"
+                        >
+                          <Plus size={18} />
+                          ДОДАТИ ПРАВИЛО
+                        </button>
+                      </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 gap-4">
-                      {rules.filter(r => r.category === activeCategory).map(rule => (
-                        <div key={rule.id} className="glass p-6 rounded-2xl flex items-center justify-between gap-6">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-[10px] font-black">#{rule.id}</span>
-                              <span className="text-slate-500 text-[10px] font-bold uppercase">{(rule as any).sectionTitle}</span>
-                            </div>
-                            <p className="text-white font-bold">{rule.text}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => {
-                                const text = prompt('Новий текст правила:', rule.text);
-                                if (!text) return;
-                                fetch('/api/rules', {
-                                  method: 'POST',
-                                  headers: { 
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${token}`
-                                  },
-                                  body: JSON.stringify({ ...rule, text })
-                                }).then(() => fetchRules());
-                              }}
-                              className="p-3 bg-white/5 text-slate-400 rounded-xl hover:text-white transition-all"
-                            >
-                              <Edit size={18} />
-                            </button>
-                            <button 
-                              onClick={() => {
-                                if (confirm('Видалити це правило?')) {
-                                  fetch(`/api/rules/${rule.id}`, {
-                                    method: 'DELETE',
-                                    headers: { 'Authorization': `Bearer ${token}` }
-                                  }).then(() => fetchRules());
-                                }
-                              }}
-                              className="p-3 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500/20 transition-all"
-                            >
-                              <Trash size={18} />
-                            </button>
+                    <div className="space-y-4">
+                      <div className="p-6 rounded-3xl bg-blue-500/5 border border-blue-500/10">
+                        <h5 className="text-white font-bold mb-2 flex items-center gap-2">
+                          <Edit size={16} className="text-blue-400" />
+                          Як редагувати контент:
+                        </h5>
+                        <p className="text-slate-400 text-sm font-medium leading-relaxed mb-4">
+                          Ви можете редагувати та видаляти правила безпосередньо в основному списку категорій. 
+                          Просто перейдіть у потрібну категорію (наприклад, "Правила чату"), знайдіть правило і натисніть на іконку олівця для редагування або кошика для видалення.
+                        </p>
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Наявні розділи в цій категорії:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {Array.from(new Set(rules.filter(r => r.category === activeCategory).map(r => r.sectionTitle || "Загальні правила"))).map(title => (
+                              <span key={title} className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] text-slate-300 font-bold">{title}</span>
+                            ))}
                           </div>
                         </div>
-                      ))}
+                      </div>
+
+                      <div className="glass rounded-3xl overflow-hidden border-white/5">
+                        <div className="p-6 border-b border-white/5 bg-white/5">
+                          <h5 className="text-white font-bold">Список правил у поточній категорії ({activeCategory})</h5>
+                        </div>
+                        <div className="max-h-[400px] overflow-y-auto">
+                          <table className="w-full text-left">
+                            <thead className="bg-black/20 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                              <tr>
+                                <th className="px-6 py-4">ID</th>
+                                <th className="px-6 py-4">Текст</th>
+                                <th className="px-6 py-4 text-right">Дії</th>
+                              </tr>
+                            </thead>
+                            <tbody className="text-sm text-white font-bold">
+                              {rules.filter(r => r.category === activeCategory).map(rule => (
+                                <tr key={rule.id} className="border-t border-white/5 hover:bg-white/5 transition-colors">
+                                  <td className="px-6 py-4 text-blue-400">#{rule.id}</td>
+                                  <td className="px-6 py-4 max-w-md truncate">{rule.text}</td>
+                                  <td className="px-6 py-4 text-right">
+                                    <div className="flex justify-end gap-2">
+                                      <button onClick={() => handleEditRule(rule)} className="p-2 bg-amber-500/10 text-amber-500 rounded-lg hover:bg-amber-500/20">
+                                        <Edit size={14} />
+                                      </button>
+                                      <button onClick={() => handleDeleteRule(rule.id)} className="p-2 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500/20">
+                                        <Trash size={14} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

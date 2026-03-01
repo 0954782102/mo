@@ -146,21 +146,38 @@ async function startServer() {
   });
 
   app.post('/api/rules', authenticateToken, async (req: any, res) => {
-    if (req.user.role !== 'SysAdmin') return res.sendStatus(403);
+    if (req.user.role !== 'SysAdmin') {
+      console.warn(`Unauthorized rule update attempt by ${req.user.email}`);
+      return res.sendStatus(403);
+    }
     const { id, text, punishment, note, category, sectionTitle } = req.body;
-    await db.run(
-      'INSERT OR REPLACE INTO rules (id, text, punishment, note, category, sectionTitle) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, text, punishment, note, category, sectionTitle]
-    );
-    io.emit('rules_updated');
-    res.sendStatus(200);
+    console.log(`Updating rule ${id}:`, { category, sectionTitle });
+    
+    try {
+      await db.run(
+        'INSERT OR REPLACE INTO rules (id, text, punishment, note, category, sectionTitle) VALUES (?, ?, ?, ?, ?, ?)',
+        [id, text, punishment, note, category, sectionTitle]
+      );
+      io.emit('rules_updated');
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error updating rule:', error);
+      res.status(500).json({ error: 'Failed to update rule' });
+    }
   });
 
   app.delete('/api/rules/:id', authenticateToken, async (req: any, res) => {
     if (req.user.role !== 'SysAdmin') return res.sendStatus(403);
-    await db.run('DELETE FROM rules WHERE id = ?', [req.params.id]);
-    io.emit('rules_updated');
-    res.sendStatus(200);
+    console.log(`Deleting rule ${req.params.id}`);
+    
+    try {
+      await db.run('DELETE FROM rules WHERE id = ?', [req.params.id]);
+      io.emit('rules_updated');
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting rule:', error);
+      res.status(500).json({ error: 'Failed to delete rule' });
+    }
   });
 
   // Users Management (SysAdmin only)
